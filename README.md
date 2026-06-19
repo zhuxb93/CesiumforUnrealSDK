@@ -1,126 +1,127 @@
 # CesiumforUnrealSDK
 
-> ⚠️ 本仓库包含 Triangle (J.R. Shewchuk) C 库，该库禁止商业用途；因此本仓库整体仅供非商业学习/研究使用，商用前须移除该库或获授权。
+> ⚠️ This repository includes the Triangle C library by J.R. Shewchuk. Triangle prohibits commercial use; therefore this repository is for non-commercial study/research only unless Triangle is removed or separately licensed.
 
-[English](README.en.md) · 个人技术积累仓库
+[中文](README.zh-CN.md) · personal portfolio
 
 ![Unreal](https://img.shields.io/badge/Unreal-5.7-0e1128?logo=unrealengine) ![Language](https://img.shields.io/badge/C%2B%2B-00599C?logo=cplusplus) ![Cesium](https://img.shields.io/badge/CesiumForUnreal-required-1abc9c) ![License](https://img.shields.io/badge/License-MIT%20%C2%B7%20%E9%9D%9E%E5%95%86%E7%94%A8(Triangle)-orange) ![Purpose](https://img.shields.io/badge/%E7%94%A8%E9%80%94-%E6%8A%80%E6%9C%AF%E7%A7%AF%E7%B4%AF-blueviolet)
 
-CesiumforUnrealSDK 是一份面向 Unreal Engine 5.7 与 CesiumForUnreal 的独立 C++ 插件技术积累，整理地球相机控制器、UE 端矢量瓦片渲染、GeoJSON 几何构建、UMG 搜索/HUD/POI 标签，以及通用鉴权刷新骨架。仓库已重组为 `GeoEarth` 插件模块，适合放入 UE 工程的 `Plugins/` 目录中独立编译。
+CesiumforUnrealSDK is an independent Unreal Engine 5.7 C++ plugin archive built around CesiumForUnreal. It collects reusable work for a globe camera controller, Unreal-side vector-tile rendering, GeoJSON geometry construction, UMG search/HUD/POI labels, and a generic token-refresh skeleton. The code is reorganized into the `GeoEarth` plugin module for use under a UE project's `Plugins/` directory.
 
-## 架构
+## Architecture
 
 ```mermaid
+%%{init: {'theme':'base','themeVariables':{'fontFamily':'ui-sans-serif, system-ui, sans-serif','lineColor':'#94A3B8','edgeLabelBackground':'#F8FAFC'}}}%%
 flowchart LR
-    subgraph EXT["外部依赖"]
-        CES["CesiumForUnreal<br/>CesiumGeoreference / ECEF"]:::ext
-        SRC["瓦片 / 城市服务<br/>(占位)"]:::ext
+    subgraph EXT["External Dependencies"]
+        CES("CesiumForUnreal<br/>CesiumGeoreference / ECEF"):::ext
+        SRC("Tile / city service<br/>placeholder"):::ext
     end
-    subgraph PLG["GeoEarth 插件模块"]
-        CAM["Camera<br/>地球相机 / 蓝图运镜"]:::own
-        subgraph VT["VectorTile 管线"]
-            P1["下载 → LZ4 解压"]:::own
-            P2["FlatBuffers 解析"]:::third
-            P3["异步建筑 / 道路网格"]:::own
-            P4["帧率自适应节流"]:::own
+    subgraph PLG["GeoEarth Plugin Modules"]
+        CAM("Camera<br/>globe camera · Blueprint cinematics"):::own
+        subgraph VT["VectorTile Pipeline"]
+            P1("Download → LZ4 decompress"):::own
+            P2("FlatBuffers parse"):::third
+            P3("Async building / road mesh"):::own
+            P4("Frame-rate adaptive throttle"):::own
         end
-        GJ["GeoJSON"]:::own
-        UI["UI · 搜索 / HUD / POI"]:::own
-        AUTH["Auth · 示例骨架"]:::own
-        TRI["ThirdParty/Triangle (C, 禁商用)"]:::third
+        GJ("GeoJSON"):::own
+        UI("UI · search / HUD / POI"):::own
+        AUTH("Auth · example skeleton"):::own
+        TRI("ThirdParty · Triangle · C · non-commercial"):::third
     end
-    OUT["ProceduralMesh 渲染 + UMG"]:::out
+    OUT(["ProceduralMesh render + UMG"]):::out
 
-    CES -. 地理参考 .-> CAM
-    CES -. ECEF .-> VT
+    CES -. georeference .-> CAM
+    CES -. ECEF .-> P1
     SRC --> P1 --> P2 --> P3 --> P4 --> OUT
-    TRI -. 三角化 .-> P3
+    TRI -. triangulation .-> P3
     GJ --> OUT
     UI --> OUT
     CAM --> OUT
 
-    classDef own  fill:#0d3b66,stroke:#2f81f7,color:#e6f1ff;
-    classDef third fill:#3b2f63,stroke:#a371f7,color:#f0e9ff;
-    classDef ext  fill:#222b35,stroke:#768390,color:#cdd9e5,stroke-dasharray:4 3;
-    classDef out  fill:#13361f,stroke:#3fb950,color:#d7ffe3;
+    classDef own  fill:#DBEAFE,stroke:#3B82F6,stroke-width:1.5px,color:#1E3A8A;
+    classDef third fill:#EDE9FE,stroke:#8B5CF6,stroke-width:1.5px,color:#5B21B6;
+    classDef ext  fill:#F1F5F9,stroke:#94A3B8,stroke-width:1.5px,color:#334155,stroke-dasharray:4 3;
+    classDef out  fill:#DCFCE7,stroke:#22C55E,stroke-width:1.5px,color:#166534;
 ```
 
-瓦片数据经下载、解压、FlatBuffers 解析、异步网格和帧率节流输出到 ProceduralMesh；地球相机与瓦片的地理参考来自 CesiumForUnreal。
+Tile data flows through download, decompression, FlatBuffers parsing, async mesh generation, and frame-rate throttling before reaching ProceduralMesh. CesiumForUnreal provides georeferencing for both the globe camera and the tile pipeline.
 
-## 亮点导航
+## Highlights
 
-| 模块 | 作用 | 关键技术 / 依赖 |
+| Module | Role | Key Technology / Dependency |
 | --- | --- | --- |
-| `Source/GeoEarth/Camera/` | `APawn` 地球相机，支持自由飞行/跟随、平移、缩放、旋转、倾斜、双击飞行和蓝图运镜 API。 | CesiumGeoreference, Blueprint API |
-| `Source/GeoEarth/VectorTile/` | 矢量瓦片下载、LZ4 解压、FlatBuffers 解析、异步建筑/道路网格生成和帧率自适应节流。 | HTTP, LZ4, FlatBuffers, ProceduralMesh |
-| `Source/GeoEarth/GeoJSON/` | GeoJSON 解析、几何构建和多源加载。 | JSON, actor geometry |
-| `Source/GeoEarth/UI/` | 城市搜索面板、经纬度/视距 HUD、世界空间 POI 标签和搜索面板结构。 | UMG, HUD, POI |
-| `Source/GeoEarth/Auth/` | 通用定时刷新与请求头/URL 占位注入骨架，不包含任何真实签名算法。 | timer, bearer header placeholder |
-| `Source/GeoEarth/ThirdParty/` | FlatBuffers 头文件与 Triangle(C) 三角化能力。 | Apache-2.0, Triangle non-commercial |
-| `Docs/` | 相机控制器、矢量瓦片和 UMG 结构的中文工程说明。 | design notes |
+| `Source/GeoEarth/Camera/` | `APawn` globe camera with free-flight/follow, pan, zoom, rotation, tilt, double-click flight, and Blueprint APIs. | CesiumGeoreference, Blueprint API |
+| `Source/GeoEarth/VectorTile/` | Vector-tile download, LZ4 decompression, FlatBuffers parsing, async building/road mesh generation, and adaptive throttling. | HTTP, LZ4, FlatBuffers, ProceduralMesh |
+| `Source/GeoEarth/GeoJSON/` | GeoJSON parsing, geometry construction, and multi-source loading. | JSON, actor geometry |
+| `Source/GeoEarth/UI/` | City search panels, lon/lat/distance HUD, world-space POI labels, and search panel structure. | UMG, HUD, POI |
+| `Source/GeoEarth/Auth/` | Generic scheduled refresh and request header/URL placeholder skeleton without real signing logic. | timer, bearer header placeholder |
+| `Source/GeoEarth/ThirdParty/` | FlatBuffers headers and Triangle(C) triangulation support. | Apache-2.0, Triangle non-commercial |
+| `Docs/` | Chinese engineering notes for the camera controller, vector tiles, and UMG structure. | design notes |
 
-## 预览
+## Preview
 
-| 计划展示 | 文件名（放入 `Docs/images/`） | 内容说明 |
+| Planned View | File Name (place in `Docs/images/`) | Description |
 | --- | --- | --- |
-| 地球相机 | `globe-camera.gif` | 自由飞行 / 双击飞行 / 蓝图运镜 |
-| 矢量瓦片 | `vector-tile.gif` | UE 端建筑 / 道路瓦片加载 |
-| UMG 界面 | `umg-ui.png` | 城市搜索 / 经纬度 HUD / POI 标签 |
+| Globe camera | `globe-camera.gif` | Free flight, double-click flight, and Blueprint motion |
+| Vector tiles | `vector-tile.gif` | UE-side building and road tile loading |
+| UMG UI | `umg-ui.png` | City search, lon/lat HUD, and POI labels |
 
-<!-- 补图后取消注释：
+<!-- Uncomment after adding media:
 <p align="center">
   <img src="Docs/images/globe-camera.gif" width="720" alt="globe camera preview"><br/>
-  <em>图：地球相机自由飞行与蓝图运镜预览</em>
+  <em>Figure: globe camera free flight and Blueprint motion preview</em>
 </p>
 -->
 
-## 目录结构
+## Directory Structure
 
 ```text
 CesiumforUnrealSDK/
 ├── GeoEarth.uplugin
 ├── Source/GeoEarth/
-│   ├── Camera/                 # 地球相机控制器
-│   ├── VectorTile/{Public,Private}/  # 矢量瓦片管线
+│   ├── Camera/                 # globe camera controller
+│   ├── VectorTile/{Public,Private}/  # vector tile pipeline
 │   ├── GeoJSON/  UI/{Public,Private}/  Auth/
 │   └── ThirdParty/{FlatBuffers,Triangle}/
-├── Docs/                       # 中文工程说明
+├── Docs/                       # Chinese engineering notes
 └── README.md / LICENSE / THIRD_PARTY_NOTICES.md
 ```
 
-## 安装与依赖
+## Installation And Dependencies
 
-1. 将本仓目录放入 UE 工程的 `Plugins/CesiumforUnrealSDK/`。
-2. 安装并启用 CesiumForUnreal，确保项目可引用 `CesiumRuntime`。
-3. 启用 `ProceduralMeshComponent`、`UMG`、`HTTP`、`Json` 等插件/模块依赖。
-4. 重新生成工程文件并编译 `GeoEarth` 模块。
-5. 示例 URL 均使用 `https://example.com/...` 占位，请替换为自己的公开测试服务或本地服务。
+1. Put this repository under `Plugins/CesiumforUnrealSDK/` in an Unreal Engine project.
+2. Install and enable CesiumForUnreal, and make sure the project can reference `CesiumRuntime`.
+3. Enable or include `ProceduralMeshComponent`, `UMG`, `HTTP`, `Json`, and related module dependencies.
+4. Regenerate project files and compile the `GeoEarth` module.
+5. Example URLs use `https://example.com/...` placeholders. Replace them with your own public test service or local service.
 
-## 使用建议
+## Usage Notes
 
-建议先在一个空 UE 工程中验证相机控制器：创建包含 `CesiumGeoreference` 的关卡，把 `AGeoCameraController` 设为默认 Pawn。确认相机可用后，再接入合成 GeoJSON 或本地测试瓦片验证 `VectorTile` 与 `UI` 模块。
+Start with the camera controller in a clean UE project: create a level with `CesiumGeoreference`, set `AGeoCameraController` as the default Pawn, and verify flight controls first. After that, use synthetic GeoJSON or local test tiles to validate the `VectorTile` and `UI` modules.
 
-`Auth` 模块只是安全公开的示例骨架。如果要接入真实鉴权，请把密钥和签名逻辑放在服务端，客户端只保存短期访问凭据。
+The `Auth` module is only a safe public skeleton. For real authentication, keep secrets and signing logic on the server side and let the client store only short-lived access credentials.
 
-## 许可与脱敏
+## Licensing And Sanitization
 
-- 模块名已从历史项目名迁移为 `GeoEarth`，类前缀已改为 `Geo`。
-- 私有品牌、内网地址、真实城市服务端点、专有签名算法、缓存和商业资源均已移除。
-- `LICENSE` 仅覆盖本人原创和改写部分。
-- CesiumForUnreal、Google FlatBuffers、Triangle(C) 和 Unreal Engine 相关部分按各自许可使用，详情见 `THIRD_PARTY_NOTICES.md`。
-- Triangle(C) 禁止商业用途；本仓库整体仅供非商业学习/研究使用，商用前须移除该库或获授权。
-- 复核记录见 `脱敏复核报告.md`。
+- The module has been renamed to `GeoEarth`, and class prefixes have been normalized to `Geo`.
+- Private brand names, internal URLs, real city-service endpoints, proprietary signing logic, caches, and commercial assets have been removed.
+- `LICENSE` only covers original or rewritten code in this repository.
+- CesiumForUnreal, Google FlatBuffers, Triangle(C), and Unreal Engine related parts remain governed by their own licenses. See `THIRD_PARTY_NOTICES.md`.
+- Triangle(C) prohibits commercial use; this repository is for non-commercial study/research only unless Triangle is removed or separately licensed.
+- See `脱敏复核报告.md` for the sanitization review.
 
-## 相关仓库
+## Related Repositories
 
-同一套地理三维工程经验的三个方向，可对照阅读：
+These three repositories describe different directions of the same geospatial 3D engineering experience:
 
-- [CesiumforUnitySDK](https://github.com/zhuxb93/CesiumforUnitySDK) — Unity / C#，Cesium 生态下的矢量瓦片渲染与 GPU 实例化。
-- [UnityGeoToolkit](https://github.com/zhuxb93/UnityGeoToolkit) — Unity / C#，地理编辑器导入框架与地形 / 路网 / 雷达工具链。
-- **[CesiumforUnrealSDK](https://github.com/zhuxb93/CesiumforUnrealSDK)** — Unreal / C++，地球相机与矢量瓦片插件。
+- [CesiumforUnitySDK](https://github.com/zhuxb93/CesiumforUnitySDK) — Unity / C#, vector-tile rendering and GPU instancing in the Cesium ecosystem.
+- [UnityGeoToolkit](https://github.com/zhuxb93/UnityGeoToolkit) — Unity / C#, geospatial editor import framework plus terrain / road / radar tooling.
+- **[CesiumforUnrealSDK](https://github.com/zhuxb93/CesiumforUnrealSDK)** — Unreal / C++, globe camera and vector-tile plugin.
 
-对照点：矢量瓦片渲染（Unity C# ↔ Unreal C++ 双实现）；地理坐标数学（`GeoMath` ↔ `CoordinateConverter`）；相机运镜（关键帧录播 ↔ 地球相机控制器）。
+Comparison points: vector-tile rendering (Unity C# ↔ Unreal C++); geospatial coordinate math (`GeoMath` ↔ `CoordinateConverter`); camera motion (keyframe playback ↔ globe camera controller).
 
-## 当前状态
+## Current Status
 
-本仓已完成插件重组、中文模块说明、英文同步文档、第三方许可清单和脱敏复核。尚未在 Unreal Editor 中完成真实导入编译，公开使用前建议先在 UE 5.7 工程中跑一轮插件构建验证。
+The plugin restructuring, Chinese module notes, synchronized English README, third-party notices, and sanitization review are complete. The plugin has not yet been imported and compiled in Unreal Editor; run a UE 5.7 plugin build before production use.
