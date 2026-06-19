@@ -1,6 +1,6 @@
 # CesiumforUnrealSDK
 
-[中文](README.zh-CN.md)
+[Chinese](README.zh-CN.md)
 
 CesiumforUnrealSDK is an independent Unreal Engine 5.7 C++ plugin archive built around CesiumForUnreal. It collects reusable work for a globe camera controller, Unreal-side vector-tile rendering, GeoJSON geometry construction, UMG search/HUD/POI labels, and a generic token-refresh skeleton.
 
