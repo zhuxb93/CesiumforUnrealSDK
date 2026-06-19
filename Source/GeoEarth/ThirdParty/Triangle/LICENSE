@@ -1,0 +1,18 @@
+Triangle C Library License Notice
+
+Triangle is authored by Jonathan Richard Shewchuk.
+
+The original Triangle source states:
+
+This program may be freely redistributed under the condition that the copyright
+notices (including this entire header and the copyright notice printed when the
+`-h` switch is selected) are not removed, and no compensation is received.
+Private, research, and institutional use is free. You may distribute modified
+versions of this code under the condition that this code and any modifications
+made to it in the same file remain under copyright of the original author, both
+source and object code are made freely available without charge, and clear notice
+is given of the modifications. Distribution of this code as part of a commercial
+system is permissible only by direct arrangement with the author.
+
+Original project page:
+http://www.cs.cmu.edu/~quake/triangle.html
