@@ -1,0 +1,27 @@
+{
+  "FileVersion": 3,
+  "Version": 1,
+  "VersionName": "0.1.0",
+  "FriendlyName": "GeoEarth",
+  "Description": "CesiumForUnreal 上的地球相机、矢量瓦片、GeoJSON 和 UMG 工具插件。",
+  "Category": "Geospatial",
+  "CreatedBy": "Personal technical notes",
+  "CanContainContent": false,
+  "Modules": [
+    {
+      "Name": "GeoEarth",
+      "Type": "Runtime",
+      "LoadingPhase": "Default"
+    }
+  ],
+  "Plugins": [
+    {
+      "Name": "CesiumForUnreal",
+      "Enabled": true
+    },
+    {
+      "Name": "ProceduralMeshComponent",
+      "Enabled": true
+    }
+  ]
+}
