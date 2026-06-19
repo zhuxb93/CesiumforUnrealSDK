@@ -1,21 +1,92 @@
 # CesiumforUnrealSDK
 
-[中文](README.md)
-
 > ⚠️ This repository includes the Triangle C library by J.R. Shewchuk. Triangle prohibits commercial use; therefore this repository is for non-commercial study/research only unless Triangle is removed or separately licensed.
 
-CesiumforUnrealSDK is an independent Unreal Engine 5.7 C++ plugin archive built around CesiumForUnreal. It collects reusable work for a globe camera controller, Unreal-side vector-tile rendering, GeoJSON geometry construction, UMG search/HUD/POI labels, and a generic token-refresh skeleton.
+[中文](README.md) · personal portfolio
 
-The code has been reorganized into the `GeoEarth` plugin module and is intended to be placed under a UE project's `Plugins/` directory. It does not include the CesiumForUnreal plugin itself, commercial art assets, sqlite caches, build artifacts, real service URLs, or proprietary authentication algorithms.
+![Unreal](https://img.shields.io/badge/Unreal-5.7-0e1128?logo=unrealengine) ![Language](https://img.shields.io/badge/C%2B%2B-00599C?logo=cplusplus) ![Cesium](https://img.shields.io/badge/CesiumForUnreal-required-1abc9c) ![License](https://img.shields.io/badge/License-MIT%20%C2%B7%20%E9%9D%9E%E5%95%86%E7%94%A8(Triangle)-orange) ![Purpose](https://img.shields.io/badge/%E7%94%A8%E9%80%94-%E6%8A%80%E6%9C%AF%E7%A7%AF%E7%B4%AF-blueviolet)
+
+CesiumforUnrealSDK is an independent Unreal Engine 5.7 C++ plugin archive built around CesiumForUnreal. It collects reusable work for a globe camera controller, Unreal-side vector-tile rendering, GeoJSON geometry construction, UMG search/HUD/POI labels, and a generic token-refresh skeleton. The code is reorganized into the `GeoEarth` plugin module for use under a UE project's `Plugins/` directory.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    subgraph EXT["External Dependencies"]
+        CES["CesiumForUnreal<br/>CesiumGeoreference / ECEF"]:::ext
+        SRC["Tile / city services<br/>(placeholder)"]:::ext
+    end
+    subgraph PLG["GeoEarth Plugin Module"]
+        CAM["Camera<br/>globe camera / Blueprint motion"]:::own
+        subgraph VT["VectorTile Pipeline"]
+            P1["download → LZ4 decompress"]:::own
+            P2["FlatBuffers parse"]:::third
+            P3["async building / road meshes"]:::own
+            P4["frame-rate adaptive throttling"]:::own
+        end
+        GJ["GeoJSON"]:::own
+        UI["UI · search / HUD / POI"]:::own
+        AUTH["Auth · sample skeleton"]:::own
+        TRI["ThirdParty/Triangle (C, non-commercial)"]:::third
+    end
+    OUT["ProceduralMesh rendering + UMG"]:::out
+
+    CES -. georeference .-> CAM
+    CES -. ECEF .-> VT
+    SRC --> P1 --> P2 --> P3 --> P4 --> OUT
+    TRI -. triangulation .-> P3
+    GJ --> OUT
+    UI --> OUT
+    CAM --> OUT
+
+    classDef own  fill:#0d3b66,stroke:#2f81f7,color:#e6f1ff;
+    classDef third fill:#3b2f63,stroke:#a371f7,color:#f0e9ff;
+    classDef ext  fill:#222b35,stroke:#768390,color:#cdd9e5,stroke-dasharray:4 3;
+    classDef out  fill:#13361f,stroke:#3fb950,color:#d7ffe3;
+```
+
+Tile data flows through download, decompression, FlatBuffers parsing, async mesh generation, and frame-rate throttling before reaching ProceduralMesh. CesiumForUnreal provides georeferencing for both the globe camera and the tile pipeline.
 
 ## Highlights
 
-- `Source/GeoEarth/Camera/`: an `APawn` globe camera with free-flight/follow modes, pan, zoom, rotation, tilt, double-click flight, and Blueprint camera-motion APIs.
-- `Source/GeoEarth/VectorTile/`: vector-tile download, LZ4 decompression, FlatBuffers parsing, async building/road mesh generation, ProceduralMesh output, and frame-rate-aware throttling.
-- `Source/GeoEarth/GeoJSON/`: GeoJSON parsing, geometry construction, and multi-source loading.
-- `Source/GeoEarth/UI/`: city search panels, longitude/latitude/distance HUD, world-space POI labels, and search-panel structure.
-- `Source/GeoEarth/Auth/`: a generic scheduled refresh and request-header/URL placeholder injection skeleton without real signing logic.
-- `Docs/`: Chinese engineering notes for the camera controller, vector tiles, and UMG structure.
+| Module | Role | Key Technology / Dependency |
+| --- | --- | --- |
+| `Source/GeoEarth/Camera/` | `APawn` globe camera with free-flight/follow, pan, zoom, rotation, tilt, double-click flight, and Blueprint APIs. | CesiumGeoreference, Blueprint API |
+| `Source/GeoEarth/VectorTile/` | Vector-tile download, LZ4 decompression, FlatBuffers parsing, async building/road mesh generation, and adaptive throttling. | HTTP, LZ4, FlatBuffers, ProceduralMesh |
+| `Source/GeoEarth/GeoJSON/` | GeoJSON parsing, geometry construction, and multi-source loading. | JSON, actor geometry |
+| `Source/GeoEarth/UI/` | City search panels, lon/lat/distance HUD, world-space POI labels, and search panel structure. | UMG, HUD, POI |
+| `Source/GeoEarth/Auth/` | Generic scheduled refresh and request header/URL placeholder skeleton without real signing logic. | timer, bearer header placeholder |
+| `Source/GeoEarth/ThirdParty/` | FlatBuffers headers and Triangle(C) triangulation support. | Apache-2.0, Triangle non-commercial |
+| `Docs/` | Chinese engineering notes for the camera controller, vector tiles, and UMG structure. | design notes |
+
+## Preview
+
+| Planned View | File Name (place in `Docs/images/`) | Description |
+| --- | --- | --- |
+| Globe camera | `globe-camera.gif` | Free flight, double-click flight, and Blueprint motion |
+| Vector tiles | `vector-tile.gif` | UE-side building and road tile loading |
+| UMG UI | `umg-ui.png` | City search, lon/lat HUD, and POI labels |
+
+<!-- Uncomment after adding media:
+<p align="center">
+  <img src="Docs/images/globe-camera.gif" width="720" alt="globe camera preview"><br/>
+  <em>Figure: globe camera free flight and Blueprint motion preview</em>
+</p>
+-->
+
+## Directory Structure
+
+```text
+CesiumforUnrealSDK/
+├── GeoEarth.uplugin
+├── Source/GeoEarth/
+│   ├── Camera/                 # globe camera controller
+│   ├── VectorTile/{Public,Private}/  # vector tile pipeline
+│   ├── GeoJSON/  UI/{Public,Private}/  Auth/
+│   └── ThirdParty/{FlatBuffers,Triangle}/
+├── Docs/                       # Chinese engineering notes
+└── README.md / LICENSE / THIRD_PARTY_NOTICES.md
+```
 
 ## Installation And Dependencies
 
@@ -31,7 +102,7 @@ Start with the camera controller in a clean UE project: create a level with `Ces
 
 The `Auth` module is only a safe public skeleton. For real authentication, keep secrets and signing logic on the server side and let the client store only short-lived access credentials.
 
-## Sanitization And Licensing
+## Licensing And Sanitization
 
 - The module has been renamed to `GeoEarth`, and class prefixes have been normalized to `Geo`.
 - Private brand names, internal URLs, real city-service endpoints, proprietary signing logic, caches, and commercial assets have been removed.
@@ -42,10 +113,14 @@ The `Auth` module is only a safe public skeleton. For real authentication, keep 
 
 ## Related Repositories
 
-- `VectorTile` can be compared with the C# vector-tile pipeline in `CesiumforUnitySDK`.
-- `CoordinateConverter` can be compared with `UnityGeoToolkit`'s `GeoMath`.
-- The globe camera controller can be read alongside the Unity camera keyframe player.
+These three repositories describe different directions of the same geospatial 3D engineering experience:
+
+- [CesiumforUnitySDK](https://github.com/zhuxb93/CesiumforUnitySDK) — Unity / C#, vector-tile rendering and GPU instancing in the Cesium ecosystem.
+- [UnityGeoToolkit](https://github.com/zhuxb93/UnityGeoToolkit) — Unity / C#, geospatial editor import framework plus terrain / road / radar tooling.
+- **[CesiumforUnrealSDK](https://github.com/zhuxb93/CesiumforUnrealSDK)** — Unreal / C++, globe camera and vector-tile plugin.
+
+Comparison points: vector-tile rendering (Unity C# ↔ Unreal C++); geospatial coordinate math (`GeoMath` ↔ `CoordinateConverter`); camera motion (keyframe playback ↔ globe camera controller).
 
 ## Current Status
 
-The plugin restructuring, Chinese module notes, English entry document, third-party notices, and sanitization review are complete. The plugin has not yet been imported and compiled in Unreal Editor; run a UE 5.7 plugin build before production use.
+The plugin restructuring, Chinese module notes, synchronized English README, third-party notices, and sanitization review are complete. The plugin has not yet been imported and compiled in Unreal Editor; run a UE 5.7 plugin build before production use.
